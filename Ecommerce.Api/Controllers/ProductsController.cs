@@ -19,7 +19,7 @@ namespace Ecommerce.Api.Controllers
         [HttpGet]
         public async Task<ActionResult> GetProducts()
         {
-            var products = await _context.Products.ToListAsync();
+            var products = await _context.Products.Include(p=>p.Category).ToListAsync();
 
             return Ok(products);
         }
@@ -27,7 +27,7 @@ namespace Ecommerce.Api.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult> GetProduct(int id)
         {
-            var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == id);
+            var product = await _context.Products.Include(p=>p.Category).FirstOrDefaultAsync(p => p.Id == id);
 
             if (product == null)
             {
@@ -41,6 +41,8 @@ namespace Ecommerce.Api.Controllers
         public async Task<ActionResult> CreateProduct([FromBody] Product product)
         {
             var newProduct = product; // dto later
+
+            newProduct.Category = null!;
 
             _context.Products.Add(newProduct);
             await _context.SaveChangesAsync();
@@ -61,6 +63,7 @@ namespace Ecommerce.Api.Controllers
             productToUpdate.Description = product.Description;
             productToUpdate.Price = product.Price;
             productToUpdate.StockQuantity = product.StockQuantity;
+            productToUpdate.CategoryId = product.CategoryId;
 
             await _context.SaveChangesAsync();
 
