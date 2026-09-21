@@ -1,4 +1,5 @@
 ﻿using Ecommerce.Api.Data;
+using Ecommerce.Api.Dtos;
 using Ecommerce.Api.Models;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
@@ -19,39 +20,83 @@ namespace Ecommerce.Api.Controllers
         [HttpGet]
         public async Task<ActionResult> GetProducts()
         {
-            var products = await _context.Products.Include(p=>p.Category).ToListAsync();
+            var products = await _context.Products.Include(p => p.Category).ToListAsync();
 
-            return Ok(products);
+            var responseDtos = products.Select(product => new ProductResponseDto
+            {
+                Id = product.Id,
+                Name = product.Name,
+                Description = product.Description,
+                Price = product.Price,
+                StockQuantity = product.StockQuantity,
+                CategoryId = product.CategoryId,
+                CategoryName = product.Category.Name
+            });
+
+            return Ok(responseDtos);
         }
 
         [HttpGet("{id}")]
         public async Task<ActionResult> GetProduct(int id)
         {
-            var product = await _context.Products.Include(p=>p.Category).FirstOrDefaultAsync(p => p.Id == id);
+            var product = await _context.Products.Include(p => p.Category).FirstOrDefaultAsync(p => p.Id == id);
 
             if (product == null)
             {
                 return NotFound();
             }
 
-            return Ok(product);
+            var responseDto = new ProductResponseDto
+            {
+                Id = product.Id,
+                Name = product.Name,
+                Description = product.Description,
+                Price = product.Price,
+                StockQuantity = product.StockQuantity,
+                CategoryId = product.CategoryId,
+                CategoryName = product.Category.Name
+            };
+
+            return Ok(responseDto);
         }
 
         [HttpPost]
-        public async Task<ActionResult> CreateProduct([FromBody] Product product)
+        public async Task<ActionResult> CreateProduct([FromBody] CreateProductDto productDto)
         {
-            var newProduct = product; // dto later
+            var category = await _context.Categories.FindAsync(productDto.CategoryId);
+            if (category == null)
+            {
+                return BadRequest();
+            }
 
-            newProduct.Category = null!;
+            var newProduct = new Product
+            {
+                Name = productDto.Name,
+                Description = productDto.Description,
+                Price = productDto.Price,
+                StockQuantity = productDto.StockQuantity,
+                CategoryId = productDto.CategoryId,
+            };
 
             _context.Products.Add(newProduct);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetProduct), new { id = newProduct.Id }, newProduct);
+            var responseDto = new ProductResponseDto
+            {
+                Id = newProduct.Id,
+                Name = newProduct.Name,
+                Description = newProduct.Description,
+                Price = newProduct.Price,
+                StockQuantity = newProduct.StockQuantity,
+                CategoryId = newProduct.CategoryId,
+                CategoryName = category.Name
+            };
+
+            return CreatedAtAction(nameof(GetProduct), new { id = responseDto.Id }, responseDto);
         }
 
         [HttpPut("{id}")]
-        public async Task<ActionResult> UpdateProduct([FromBody] Product product, int id)
+        public async Task<ActionResult> UpdateProduct([FromBody] UpdateProductDto productDto, int id)
         {
             var productToUpdate = await _context.Products.FirstOrDefaultAsync(p => p.Id == id);
             if (productToUpdate == null)
@@ -59,15 +104,34 @@ namespace Ecommerce.Api.Controllers
                 return NotFound();
             }
 
-            productToUpdate.Name = product.Name;
-            productToUpdate.Description = product.Description;
-            productToUpdate.Price = product.Price;
-            productToUpdate.StockQuantity = product.StockQuantity;
-            productToUpdate.CategoryId = product.CategoryId;
+            var category = await _context.Categories.FindAsync(productDto.CategoryId);
+            if (category == null)
+            {
+                return BadRequest();
+            }
+
+            productToUpdate.Name = productDto.Name;
+            productToUpdate.Description = productDto.Description;
+            productToUpdate.Price = productDto.Price;
+            productToUpdate.StockQuantity = productDto.StockQuantity;
+            productToUpdate.CategoryId = productDto.CategoryId;
+
+            
 
             await _context.SaveChangesAsync();
 
-            return Ok(productToUpdate);
+            var responseDto = new ProductResponseDto
+            {
+                Id = productToUpdate.Id,
+                Name = productToUpdate.Name,
+                Description = productToUpdate.Description,
+                Price = productToUpdate.Price,
+                StockQuantity = productToUpdate.StockQuantity,
+                CategoryId = productToUpdate.CategoryId,
+                CategoryName = category.Name
+            };
+
+            return Ok(responseDto);
         }
 
         [HttpDelete("{id}")]
