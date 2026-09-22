@@ -18,9 +18,64 @@ namespace Ecommerce.Api.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult> GetProducts()
+        public async Task<ActionResult> GetProducts(string? search, decimal? minPrice,
+            decimal? maxPrice, int? categoryId, string? sortBy, string? sortOrder)
         {
-            var products = await _context.Products.Include(p => p.Category).ToListAsync();
+
+            IQueryable<Product> query = _context.Products.Include(p => p.Category);
+
+            if (search != null)
+            {
+                query = query.Where(p => p.Name.Contains(search));
+            }
+            if (minPrice.HasValue)
+            {
+                query = query.Where(p => p.Price >= minPrice);
+            }
+            if (maxPrice.HasValue)
+            {
+                query = query.Where(p => p.Price <= maxPrice);
+            }
+            if (categoryId.HasValue)
+            {
+                query = query.Where(p => p.CategoryId == categoryId);
+            }
+
+            switch (sortBy)
+            {
+                case "price":
+                    switch (sortOrder)
+                    {
+                        case "asc":
+                            query = query.OrderBy(p => p.Price);
+                            break;
+                        case "desc":
+                            query = query.OrderByDescending(p => p.Price);
+                            break;
+                        default:
+                            query = query.OrderBy(p => p.Price);
+                            break;
+                    }
+                    break;
+                case "name":
+                    switch (sortOrder)
+                    {
+                        case "asc":
+                            query = query.OrderBy(p => p.Name);
+                            break;
+                        case "desc":
+                            query = query.OrderByDescending(p => p.Name);
+                            break;
+                        default:
+                            query = query.OrderBy(p => p.Name);
+                            break;
+                    }
+                    break;
+                default:
+                    break;
+            }
+
+            var products = await query.ToListAsync();
 
             var responseDtos = products.Select(product => new ProductResponseDto
             {
@@ -115,8 +170,6 @@ namespace Ecommerce.Api.Controllers
             productToUpdate.Price = productDto.Price;
             productToUpdate.StockQuantity = productDto.StockQuantity;
             productToUpdate.CategoryId = productDto.CategoryId;
-
-            
 
             await _context.SaveChangesAsync();
 
