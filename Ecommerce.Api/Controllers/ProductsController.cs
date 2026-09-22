@@ -1,9 +1,9 @@
 ﻿using Ecommerce.Api.Data;
 using Ecommerce.Api.Dtos;
 using Ecommerce.Api.Models;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 
 namespace Ecommerce.Api.Controllers
 {
@@ -19,7 +19,9 @@ namespace Ecommerce.Api.Controllers
 
         [HttpGet]
         public async Task<ActionResult> GetProducts(string? search, decimal? minPrice,
-            decimal? maxPrice, int? categoryId, string? sortBy, string? sortOrder)
+            decimal? maxPrice, int? categoryId, string? sortBy, string? sortOrder,
+            [Range(1, int.MaxValue)] int page = 1,
+            [Range(1, 100)] int pageSize = 3)
         {
 
             IQueryable<Product> query = _context.Products.Include(p => p.Category);
@@ -72,8 +74,14 @@ namespace Ecommerce.Api.Controllers
                     }
                     break;
                 default:
+                    query = query.OrderBy(p => p.Id);
                     break;
             }
+
+            var totalItems = await query.CountAsync();
+            var totalPages = (int)Math.Ceiling((decimal)totalItems / pageSize);
+
+            query = query.Skip((page - 1) * pageSize).Take(pageSize);
 
             var products = await query.ToListAsync();
 
@@ -88,7 +96,16 @@ namespace Ecommerce.Api.Controllers
                 CategoryName = product.Category.Name
             });
 
-            return Ok(responseDtos);
+            var pagedResponse = new PagedResponseDto<ProductResponseDto>
+            {
+                Items = responseDtos.ToList(),
+                Page = page,
+                PageSize = pageSize,
+                TotalItems = totalItems,
+                TotalPages = totalPages
+            };
+
+            return Ok(pagedResponse);
         }
 
         [HttpGet("{id}")]
