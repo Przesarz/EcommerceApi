@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Ecommerce.Api.Controllers
 {
     [ApiController]
-    [Route("/api/[controller]")]
+    [Route("api/[controller]")]
     public class CategoriesController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -28,7 +28,7 @@ namespace Ecommerce.Api.Controllers
         public async Task<ActionResult> GetCategory(int id)
         {
             var category = await _context.Categories
-                .Include(c=>c.Products)
+                .Include(c => c.Products)
                 .FirstOrDefaultAsync(c => c.Id == id);
 
             if (category == null)
@@ -50,7 +50,7 @@ namespace Ecommerce.Api.Controllers
             _context.Categories.Add(newCategory);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetCategory), new {id =  newCategory.Id}, newCategory);
+            return CreatedAtAction(nameof(GetCategory), new { id = newCategory.Id }, newCategory);
         }
     }
 }
