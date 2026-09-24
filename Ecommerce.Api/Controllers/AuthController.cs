@@ -1,9 +1,14 @@
 ﻿using Ecommerce.Api.Data;
 using Ecommerce.Api.Dtos;
 using Ecommerce.Api.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace Ecommerce.Api.Controllers
 {
@@ -12,10 +17,12 @@ namespace Ecommerce.Api.Controllers
     public class AuthController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly IConfiguration _configuration;
 
-        public AuthController(ApplicationDbContext context)
+        public AuthController(ApplicationDbContext context, IConfiguration configuration)
         {
             _context = context;
+            _configuration = configuration;
         }
 
         [HttpPost("register")]
@@ -64,7 +71,36 @@ namespace Ecommerce.Api.Controllers
                 return BadRequest();
             }
 
-            return Ok();
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Role, user.Role.ToString())
+            };
+
+            SymmetricSecurityKey securityKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
+            SigningCredentials signingCredentials = new SigningCredentials(
+                securityKey,
+                SecurityAlgorithms.HmacSha256);
+            JwtSecurityToken token = new JwtSecurityToken(
+                issuer: _configuration["Jwt:Issuer"],
+                audience: _configuration["Jwt:Audience"],
+                claims: claims,
+                expires: DateTime.UtcNow.AddHours(1),
+                signingCredentials: signingCredentials
+                );
+            var tokenHandler = new JwtSecurityTokenHandler();
+            string jwt = tokenHandler.WriteToken(token);
+
+            return Ok(new { token = jwt });
+        }
+
+        [HttpGet("test")]
+        [Authorize(Roles = "Admin")]
+        public IActionResult Test()
+        {
+            return Ok("youre authorized");
         }
     }
 }
